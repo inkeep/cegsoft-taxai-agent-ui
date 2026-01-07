@@ -1,4 +1,3 @@
-import "./App.css";
 import { useEffect, useMemo, useState } from "react";
 import {
   InkeepChatButton,
@@ -78,12 +77,11 @@ const clients: Client[] = [
 export default function App() {
   const [jwtToken, setJwtToken] = useState("");
   const [apiKey, setApiKey] = useState("");
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState<string>(
     clients[0]?.id ?? ""
   );
-  const [selectedReturnId, setSelectedReturnId] = useState<string>(
-    clients[0]?.taxReturns[0]?.id ?? ""
-  );
+  const [selectedReturnId, setSelectedReturnId] = useState<string>("");
   const [isInitialized, setIsInitialized] = useState(false);
 
   const selectedClient = useMemo(
@@ -93,15 +91,8 @@ export default function App() {
 
   const handleClientChange = (clientId: string) => {
     setSelectedClientId(clientId);
-    const client = clients.find((c) => c.id === clientId);
-    const firstReturn = client?.taxReturns?.[0];
-    setSelectedReturnId(firstReturn?.id ?? "");
+    setSelectedReturnId("");
   };
-
-  const chatSessionKey = useMemo(
-    () => selectedReturnId || "no-return",
-    [selectedReturnId]
-  );
 
   useEffect(() => {
     console.log("[Inkeep Demo] Loaded env config", {
@@ -120,9 +111,6 @@ export default function App() {
       apiKeyLength: apiKey.length,
     });
     if (jwtToken && apiKey) {
-      const firstReturn =
-        selectedClient?.taxReturns && selectedClient.taxReturns[0];
-      setSelectedReturnId(firstReturn?.id ?? "");
       setIsInitialized(true);
     } else {
       console.warn(
@@ -422,13 +410,17 @@ export default function App() {
               </div>
               {aiChatSettings ? (
                 <InkeepChatButton
-                  key={chatSessionKey}
+                  key={selectedReturnId || "return-default"}
                   baseSettings={{
                     organizationDisplayName: "CEGsoft TaxesAI",
                     primaryBrandColor: "#2563eb",
                     colorMode: { forcedColorMode: "light" },
                   }}
                   aiChatSettings={aiChatSettings}
+                  openSettings={{
+                    isOpen: isChatOpen,
+                    onOpenChange: setIsChatOpen,
+                  }}
                 />
               ) : (
                 <p className="text-sm text-red-600">
