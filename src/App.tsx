@@ -146,6 +146,7 @@ export default function App() {
         projectId,
         agentId,
         agentUrl: agentUrlFromEnv,
+        agentApiKey: agentApiKey,
         hasAgentApiKey: Boolean(agentApiKey),
         headerKeys: Object.keys(headers),
         hasSelectedReturn: Boolean(selectedReturnId),
@@ -153,7 +154,7 @@ export default function App() {
 
       return {
         agentUrl: agentUrlFromEnv,
-        agentApiKey: agentApiKey || undefined,
+        apiKey: agentApiKey,
         headers,
         context: selectedReturnId
           ? { "return-id": selectedReturnId }
@@ -410,7 +411,6 @@ export default function App() {
               </div>
               {aiChatSettings ? (
                 <InkeepChatButton
-                  key={selectedReturnId || "return-default"}
                   baseSettings={{
                     organizationDisplayName: "CEGsoft TaxesAI",
                     primaryBrandColor: "#2563eb",
