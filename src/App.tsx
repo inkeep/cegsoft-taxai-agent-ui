@@ -1,8 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import {
-  InkeepChatButton,
-  type InkeepChatButtonProps,
-} from "@inkeep/agents-ui";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useChat } from '@ai-sdk/react';
+import { DefaultChatTransport } from 'ai';
 
 const tenantId = import.meta.env.VITE_INKEEP_TENANT_ID ?? "default";
 const projectId =
@@ -10,7 +8,6 @@ const projectId =
 const agentId = import.meta.env.VITE_INKEEP_AGENT_ID ?? "taxesai-pilot-agent";
 const agentUrlFromEnv =
   import.meta.env.VITE_INKEEP_AGENT_URL ?? "http://localhost:3003/api/chat";
-const agentApiKey = import.meta.env.VITE_INKEEP_AGENT_API_KEY;
 
 type TaxReturn = {
   id: string;
@@ -77,12 +74,17 @@ const clients: Client[] = [
 export default function App() {
   const [jwtToken, setJwtToken] = useState("");
   const [apiKey, setApiKey] = useState("");
-  const [isChatOpen, setIsChatOpen] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState<string>(
     clients[0]?.id ?? ""
   );
   const [selectedReturnId, setSelectedReturnId] = useState<string>("");
   const [isInitialized, setIsInitialized] = useState(false);
+  const [chatInput, setChatInput] = useState("");
+  const authRef = useRef({
+    jwtToken: "",
+    apiKey: "",
+    returnId: "",
+  });
 
   const selectedClient = useMemo(
     () => clients.find((client) => client.id === selectedClientId),
@@ -95,18 +97,73 @@ export default function App() {
   };
 
   useEffect(() => {
-    console.log("[Inkeep Demo] Loaded env config", {
+    console.log("[TaxesAI Demo] Loaded env config", {
       tenantId,
       projectId,
       agentId,
       agentUrl: agentUrlFromEnv,
-      hasAgentApiKey: Boolean(agentApiKey),
+      agentUrlType: typeof agentUrlFromEnv,
+      agentUrlValue: JSON.stringify(agentUrlFromEnv),
+      allEnvVars: {
+        VITE_INKEEP_AGENT_URL: import.meta.env.VITE_INKEEP_AGENT_URL,
+      }
     });
   }, []);
 
+  useEffect(() => {
+    authRef.current = {
+      jwtToken,
+      apiKey,
+      returnId: selectedReturnId,
+    };
+  }, [jwtToken, apiKey, selectedReturnId]);
+
+  const { messages, append } = (useChat as any)({
+    transport: new DefaultChatTransport({
+      api: agentUrlFromEnv,
+      headers: () => {
+        console.log("[Transport] Building headers");
+        const headers: Record<string, string> = {
+          "x-inkeep-tenant-id": tenantId,
+          "x-inkeep-project-id": projectId,
+          "x-inkeep-agent-id": agentId,
+        };
+
+        if (authRef.current.jwtToken) {
+          headers["jwt-authentication-token"] = `Bearer ${authRef.current.jwtToken}`;
+        }
+        if (authRef.current.apiKey) {
+          headers["x-api-key"] = authRef.current.apiKey;
+        }
+        if (authRef.current.returnId) {
+          headers["return-id"] = authRef.current.returnId;
+        }
+
+        console.log("[Transport] Headers:", headers);
+        return headers;
+      },
+    }),
+    streamProtocol: "data",
+  });
+
+  useEffect(() => {
+    console.log("[Messages] Updated:", messages.length, messages);
+  }, [messages]);
+
+  const renderMessageText = (message: any) => {
+    if (Array.isArray(message?.parts) && message.parts.length) {
+      return message.parts
+        .map((part: any) => (part.type === "text" ? part.text : ""))
+        .join("\n");
+    }
+    if (typeof message?.content === "string") return message.content;
+    if (typeof message?.text === "string") return message.text;
+    return "";
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("[Inkeep Demo] Submitting credentials", {
+    console.log("[TaxesAI Demo] Submitting credentials", {
       jwtTokenLength: jwtToken.length,
       apiKeyLength: apiKey.length,
     });
@@ -114,62 +171,11 @@ export default function App() {
       setIsInitialized(true);
     } else {
       console.warn(
-        "[Inkeep Demo] Missing jwtToken or apiKey; chat will not initialize."
+        "[TaxesAI Demo] Missing jwtToken or apiKey; chat will not initialize."
       );
     }
   };
 
-  const aiChatSettings: InkeepChatButtonProps["aiChatSettings"] | undefined =
-    useMemo(() => {
-      if (!isInitialized) {
-        console.log("[Inkeep Demo] Chat not initialized yet.");
-        return undefined;
-      }
-
-      const headers: Record<string, string> = {
-        // Standard Inkeep headers
-        "x-inkeep-tenant-id": tenantId,
-        "x-inkeep-project-id": projectId,
-        "x-inkeep-agent-id": agentId,
-
-        // TaxesAI agent custom headers (matching the requestHeaders schema)
-        "jwt-authentication-token": `Bearer ${jwtToken}`,
-        "x-api-key": apiKey,
-      };
-
-      if (selectedReturnId) {
-        headers["return-id"] = selectedReturnId;
-      }
-
-      console.log("[Inkeep Demo] Building InkeepChatButton props", {
-        tenantId,
-        projectId,
-        agentId,
-        agentUrl: agentUrlFromEnv,
-        hasAgentApiKey: Boolean(agentApiKey),
-        headerKeys: Object.keys(headers),
-        hasSelectedReturn: Boolean(selectedReturnId),
-      });
-
-      return {
-        agentUrl: agentUrlFromEnv,
-        agentApiKey: agentApiKey || undefined,
-        headers,
-        context: selectedReturnId
-          ? { "return-id": selectedReturnId }
-          : undefined,
-        placeholder: "Ask me anything about taxes...",
-        introMessage:
-          "Hi! I'm your TaxesAI assistant. Select a return and start chatting.",
-      };
-    }, [isInitialized, jwtToken, apiKey, selectedReturnId]);
-
-  useEffect(() => {
-    console.log("[Inkeep Demo] Updated return selection", {
-      selectedReturnId,
-      hasReturnId: Boolean(selectedReturnId),
-    });
-  }, [selectedReturnId]);
 
   if (!isInitialized) {
     return (
@@ -408,25 +414,78 @@ export default function App() {
                   </p>
                 </div>
               </div>
-              {aiChatSettings ? (
-                <InkeepChatButton
-                  key={selectedReturnId || "return-default"}
-                  baseSettings={{
-                    organizationDisplayName: "CEGsoft TaxesAI",
-                    primaryBrandColor: "#2563eb",
-                    colorMode: { forcedColorMode: "light" },
-                  }}
-                  aiChatSettings={aiChatSettings}
-                  openSettings={{
-                    isOpen: isChatOpen,
-                    onOpenChange: setIsChatOpen,
-                  }}
-                />
-              ) : (
-                <p className="text-sm text-red-600">
-                  Chat settings are not initialized. Please re-enter credentials.
-                </p>
-              )}
+              <div className="grid gap-6">
+                <div className="border rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-800">
+                        TaxesAI Chat (Vercel AI SDK)
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Dynamic headers keep JWT/API key and return-id fresh without restarting.
+                      </p>
+                    </div>
+                    {!isInitialized && (
+                      <span className="text-xs font-semibold text-red-600">
+                        Enter credentials to start
+                      </span>
+                    )}
+                  </div>
+                  <div className="border rounded-lg">
+                    <div className="p-4 space-y-3 max-h-96 overflow-y-auto">
+                      {messages.map((message: any) => (
+                        <div
+                          key={message.id}
+                          className="border rounded-lg p-3 bg-gray-50"
+                        >
+                          <p className="text-xs font-semibold text-gray-500 mb-1">
+                            {message.role === "user" ? "User" : "Assistant"}
+                          </p>
+                          <p className="text-sm text-gray-800 whitespace-pre-wrap">
+                            {renderMessageText(message)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                    <form
+                      className="flex gap-2 border-t border-gray-200 p-3"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        console.log("[Form Submit] Starting with input:", chatInput);
+                        console.log("[Form Submit] isInitialized:", isInitialized);
+                        console.log("[Form Submit] append function:", typeof append);
+                        if (!chatInput.trim() || !isInitialized) {
+                          console.log("[Form Submit] Aborting - validation failed");
+                          return;
+                        }
+                        console.log("[Form Submit] Calling append with:", { role: "user", content: chatInput });
+                        const result = append({ role: "user", content: chatInput });
+                        console.log("[Form Submit] append returned:", result);
+                        setChatInput("");
+                      }}
+                    >
+                      <input
+                        className="flex-1 border rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder={
+                          isInitialized
+                            ? "Ask about taxes or a specific return..."
+                            : "Start chat after adding credentials"
+                        }
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        disabled={!isInitialized}
+                      />
+                      <button
+                        type="submit"
+                        className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700"
+                        disabled={!isInitialized}
+                      >
+                        Send
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
