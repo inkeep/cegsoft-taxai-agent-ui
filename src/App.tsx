@@ -11,7 +11,6 @@ import { ClientSelector } from "./components/ClientSelector";
 import { ClientInfo } from "./components/ClientInfo";
 import { TaxReturnsList } from "./components/TaxReturnsList";
 import { ChatSection } from "./components/ChatSection";
-import { Footer } from "./components/Footer";
 
 export default function App() {
   const { jwtToken, isLoading, authError, retry } = useAuth();
@@ -63,7 +62,6 @@ export default function App() {
               onChatOpenChange={setIsChatOpen}
             />
           </div>
-          <Footer />
         </div>
       </div>
     </div>
