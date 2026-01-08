@@ -30,11 +30,11 @@ export function useAuth() {
     fetchToken();
   }, []);
 
-  // Refresh JWT token every 2 seconds for testing context updates
+  // Refresh JWT token every 55min for testing context updates
   useEffect(() => {
     if (!jwtToken) return;
 
-    console.log("[Inkeep Demo] Starting 2-second JWT token refresh interval");
+    console.log("[Inkeep Demo] Starting 55min JWT token refresh interval");
     const interval = setInterval(async () => {
       try {
         const newToken = await getJwtToken();
@@ -43,7 +43,7 @@ export function useAuth() {
       } catch (error) {
         console.error("[Inkeep Demo] Failed to refresh token:", error);
       }
-    }, 2000);
+    }, 3300000);
 
     return () => {
       console.log("[Inkeep Demo] Clearing JWT token refresh interval");
