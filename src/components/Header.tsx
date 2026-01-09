@@ -2,7 +2,7 @@ export function Header() {
   return (
     <div className="text-center mb-8">
       <div className="inline-flex items-center gap-2 mb-4">
-        <span className="text-sm font-medium text-gray-600 uppercase tracking-wide">
+        <span className="text-sm font-medium text-gray-600 tracking-wide">
           CEGsoft TaxesAI Assistant
         </span>
       </div>
