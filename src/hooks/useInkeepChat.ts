@@ -23,18 +23,6 @@ export function useInkeepChat(jwtToken: string, selectedReturnId: string) {
         headers["return-id"] = selectedReturnId;
       }
 
-      console.log("[Inkeep Demo] Building InkeepChatButton props", {
-        tenantId: inkeepConfig.tenantId,
-        projectId: inkeepConfig.projectId,
-        agentId: inkeepConfig.agentId,
-        agentUrl: inkeepConfig.agentUrl,
-        agentApiKey: inkeepConfig.agentApiKey,
-        hasAgentApiKey: Boolean(inkeepConfig.agentApiKey),
-        headerKeys: Object.keys(headers),
-        hasSelectedReturn: Boolean(selectedReturnId),
-        jwtTokenPreview: "..." + jwtToken.slice(-50),
-      });
-
       return {
         agentUrl: inkeepConfig.agentUrl,
         apiKey: inkeepConfig.agentApiKey,
@@ -44,15 +32,6 @@ export function useInkeepChat(jwtToken: string, selectedReturnId: string) {
           "Hi! I'm your TaxesAI assistant. Select a return and start chatting.",
       };
     }, [jwtToken, selectedReturnId]);
-
-  useEffect(() => {
-    console.log("[Inkeep Demo] Context updated", {
-      selectedReturnId,
-      hasReturnId: Boolean(selectedReturnId),
-      hasJwtToken: Boolean(jwtToken),
-      jwtTokenPreview: jwtToken ? "..." + jwtToken.slice(-30) : "none",
-    });
-  }, [selectedReturnId, jwtToken]);
 
   return { aiChatSettings };
 }
