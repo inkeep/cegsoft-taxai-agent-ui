@@ -1,12 +1,13 @@
-import { useMemo, useEffect } from "react";
+import { useMemo } from "react";
 import type { InkeepChatButtonProps } from "@inkeep/agents-ui";
 import { inkeepConfig } from "../config/inkeep";
 
 export function useInkeepChat(jwtToken: string, selectedReturnId: string) {
-  const aiChatSettings: InkeepChatButtonProps["aiChatSettings"] | undefined =
+  const isReady = Boolean(jwtToken);
+
+  const aiChatSettings: InkeepChatButtonProps["aiChatSettings"] =
     useMemo(() => {
       if (!jwtToken) {
-        console.log("Chat not initialized yet - no JWT token.");
         return undefined;
       }
 
@@ -33,5 +34,5 @@ export function useInkeepChat(jwtToken: string, selectedReturnId: string) {
       };
     }, [jwtToken, selectedReturnId]);
 
-  return { aiChatSettings };
+  return { aiChatSettings, isReady };
 }

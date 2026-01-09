@@ -15,7 +15,7 @@ import { ChatSection } from "./components/ChatSection";
 export default function App() {
   const { jwtToken, isLoading, authError, retry } = useAuth();
   const clientSelection = useClientSelection(clients);
-  const { aiChatSettings } = useInkeepChat(jwtToken, clientSelection.selectedReturnId);
+  const { aiChatSettings, isReady } = useInkeepChat(jwtToken, clientSelection.selectedReturnId);
   const [isChatOpen, setIsChatOpen] = useState(false);
 
   useEffect(() => {
